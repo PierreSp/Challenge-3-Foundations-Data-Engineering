@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <set>
 
 
 using namespace std;
@@ -54,8 +55,12 @@ int BFS(
 
 int main(int argc, char** argv) {
     unordered_map<size_t, unordered_set<size_t>> A; 
+    unordered_map<size_t, unordered_set<size_t>> AA;
     unordered_map<size_t, unordered_set<size_t>> M;
-    A.reserve(1400000);
+    std::vector<size_t> set_actors;
+
+    //A.reserve(2000000);
+    set_actors.reserve(2000000);
     M.reserve(1400000);
     // Open file and figre out length
     int handle=open(argv[1],O_RDONLY);
@@ -81,8 +86,11 @@ int main(int argc, char** argv) {
             }else if (column==0) {
                     actor=10*actor+c-'0';
             }else if (c=='\n') {
-                A[actor].insert(movie); //Actor und Movie werden in unsere Hashmap eingefügt.
-                M[movie].insert(actor);
+                //A[actor].insert(movie); //Actor und Movie werden in unsere Hashmap eingefügt.
+            //M[movie].insert(actor);
+                set_actors.push_back(actor);
+                set_actors.push_back(movie);
+
                 ++current;
                 break;
             }else if (column==1) {
@@ -90,7 +98,13 @@ int main(int argc, char** argv) {
             }
         }
     }
-
+exit(0);
+    for(size_t j : set_actors){ 
+        //cout << j << endl;
+        for(size_t k : M.at(j)) {
+            AA[j].insert(k);
+        }
+    }
 
     cout << "File eingelesen2 " <<  A.count(1)<< endl;
 

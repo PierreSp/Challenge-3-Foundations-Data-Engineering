@@ -15,15 +15,26 @@ Max MovieID: 1151758
 
 #include <iostream>
 #include <fstream>
-#include <unordered_map>
-#include <unordered_set>
+//#include <unordered_map>
+//#include <unordered_set>
 #include <vector>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <list>
+#include <thread>
+//#include <mutex>
 
 using namespace std;
+
+//static std::mutex barrier;
+
+// BAD CODING!!! <3
+int *actor_keys = new int[1971696];
+int *a1 = new int[1971696];
+int *m1 = new int[17316773-1];
+int *movie_to = new int[1151758];
+int *to_actors = new int[17316773-1]();
 
 //rekursive Funktion Breadth-First-Search
 int BFS(
@@ -88,10 +99,29 @@ int BFS(
     return ++count;
 }
 
+void BFSThread(size_t thread_a1, size_t thread_a2, int *dist_thread, size_t i){
+	 bool *visited = new bool[1971696]();
+    // Boolean to save if actor i has been visited or not
+    // Nodes are the ones we are visiting right now - We'll want to find their neighbours with each iteration of BFS
+    // unordered_set<size_t> current_nodes;
+    list<size_t> current_nodes;
+    // We start with only actorid1
+    current_nodes.push_back(thread_a1);
+    int dist;
+    // Start Breadth-First-Search
+    dist = BFS(
+        actor_keys, a1, m1, 
+        movie_to, to_actors,
+        // M,
+        thread_a2, current_nodes, visited);
+    // Write on global dist variable 
+    //std::lock_guard<std::mutex> block_threads_until_finish_this_job(barrier);
+    cout << "Process: " << i << " Len: " << dist << endl;
+   	dist_thread[i] = dist;
+}
+
 int main(int argc, char** argv) {
-    int *actor_keys = new int[1971696];
-    int *a1 = new int[1971696];
-    int *m1 = new int[17316773-1];
+
     // 1731673-1
     // a[1] = 2;
 
@@ -164,8 +194,7 @@ int main(int argc, char** argv) {
     // return 0;
 
     // Movie to actor:
-    int *movie_to = new int[1151758];
-    int *to_actors = new int[17316773-1]();
+
     int iterator = 0;
     for(size_t movie_id=1; movie_id<=1151758; movie_id++){
         for(size_t actor : M.at(movie_id)){
@@ -180,30 +209,32 @@ int main(int argc, char** argv) {
     // While there is an input: read, store, compute
     size_t actorid1;
     size_t actorid2;
+    vector<size_t> actor1;
+    vector<size_t> actor2;
     while((cin >> actorid1) && (cin >> actorid2)) {
         //cout << "Berechne " << actorid1 << " " << actorid2 << endl;
-
         if(actorid1 == actorid2){
             cout << 0 << endl;
             continue;
         }
+        actor1.push_back(actorid1);
+        actor2.push_back(actorid2);
+    }
+    size_t inputlen = actor1.size();
+    int *distance = new int[inputlen];
+    thread *threadar = new thread[inputlen];
 
-        // Boolean to save if actor i has been visited or not
-        bool *visited = new bool[1971696]();
-        // Nodes are the ones we are visiting right now - We'll want to find their neighbours with each iteration of BFS
-        // unordered_set<size_t> current_nodes;
-        list<size_t> current_nodes;
-        // We start with only actorid1
-        current_nodes.push_back(actorid1);
+    for(size_t i=0; i < inputlen; i++){
+    	threadar[i] = thread(BFSThread, actor1[i], actor2[i], distance, i);
+    }
+    cout << "Threading started" << endl;
+    for(size_t i=0; i < inputlen; i++){
+    	threadar[i].join();
+    }
 
-        // Start Breadth-First-Search
-        int dist = BFS(
-            actor_keys, a1, m1, 
-            movie_to, to_actors,
-            // M,
-            actorid2, current_nodes, visited);
-
-        cout << dist << endl;
+    for(size_t j=0; j<inputlen; j++){
+    	cout << distance[j] << endl;
     }
     return 0;
 }
+	

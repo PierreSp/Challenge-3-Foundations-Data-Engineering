@@ -1,9 +1,5 @@
-// Bacon Number
-// g++ -O3 -Wall -std=c++14 ./dist.c++ 
-// ./a.out playedin.csv
 // time echo -e "1 1\n1 2\n2 3\n3 4\n4 5" |./bacon playedin.csv
 // time echo -e "1 1\n1 2" |./bacon playedin.csv
-
 
 /*
 Some numbers:
@@ -11,7 +7,6 @@ Max ActorID: 1971696
 NRows: 17316773-1
 Max MovieID: 1151758
 */
-
 
 #include <iostream>
 #include <fstream>
@@ -29,18 +24,18 @@ using namespace std;
 
 // BAD CODING!!! <3
 int *actor_keys = new int[1971696];
-int *a1 = new int[1971696];
-int *m1 = new int[17316773-1];
-int *movie_to = new int[1151758];
-int *to_actors = new int[17316773-1]();
+int *act2mov_actors = new int[1971696];
+int *act2mov_movies = new int[17316773-1];
+int *mov2act_movies = new int[1151758];
+int *mov2act_actors = new int[17316773-1]();
 
 // Breadth-First Search
 int BFS(
         int *actor_keys,
-        int *a1,
-        int *m1,
-        int *movie_to,
-        int *to_actors,
+        int *act2mov_actors,
+        int *act2mov_movies,
+        int *mov2act_movies,
+        int *mov2act_actors,
         size_t actorid2, 
         list<size_t> current_nodes,
         bool *visited
@@ -57,11 +52,11 @@ int BFS(
     // For all current actors
     for(size_t i : current_nodes) {
         // Get all movies
-        for(size_t j = a1[actor_keys[i]-1]; j < a1[actor_keys[i]]; j++) {
-            int movie = m1[j];
+        for(size_t j = act2mov_actors[actor_keys[i]-1]; j < act2mov_actors[actor_keys[i]]; j++) {
+            int movie = act2mov_movies[j];
             // For each movie find all actors
-            for(size_t k=movie_to[movie-1]; k<movie_to[movie]; k++){
-                size_t new_actor = to_actors[k];
+            for(size_t k=mov2act_movies[movie-1]; k<mov2act_movies[movie]; k++){
+                size_t new_actor = mov2act_actors[k];
                 // If he has not been inspected yet add him to neighbors
                 if(!visited[new_actor]) {
                     // If it is the actor2 we are looking for return 1 as distance
@@ -77,8 +72,8 @@ int BFS(
 
     // Now perform BFS on the neighbours we just found
     int count = BFS(
-        actor_keys, a1, m1,
-        movie_to, to_actors,
+        actor_keys, act2mov_actors, act2mov_movies,
+        mov2act_movies, mov2act_actors,
         actorid2, neighbours, visited);
     
     // If BFS returns -1 we pass that forward
@@ -90,6 +85,11 @@ int BFS(
 }
 
 void BFSThread(size_t thread_a1, size_t thread_a2, int *dist_thread, size_t i){
+    if(thread_a1 == thread_a2){
+            dist_thread[i] = 0;
+            return;
+    }
+
     bool *visited = new bool[1971696]();
     // Boolean to save if actor i has been visited or not
     // Nodes are the ones we are visiting right now - We'll want to find their neighbours with each iteration of BFS
@@ -100,8 +100,8 @@ void BFSThread(size_t thread_a1, size_t thread_a2, int *dist_thread, size_t i){
     int dist;
     // Start Breadth-First-Search
     dist = BFS(
-        actor_keys, a1, m1, 
-        movie_to, to_actors,
+        actor_keys, act2mov_actors, act2mov_movies, 
+        mov2act_movies, mov2act_actors,
         thread_a2, current_nodes, visited);
     // Write on global dist variable 
     // std::lock_guard<std::mutex> block_threads_until_finish_this_job(barrier);
@@ -111,22 +111,24 @@ void BFSThread(size_t thread_a1, size_t thread_a2, int *dist_thread, size_t i){
 
 int main(int argc, char** argv) {
 
-    // Movie to actor map
+    // Movie to actor map - Will be replaced later
     vector<vector<size_t>> M(1151758+1);
 
     // Open file and figre out length
-    int handle=open(argv[1],O_RDONLY);
+    int handle = open(argv[1],O_RDONLY);
     if (handle<0) return 1;
     lseek(handle,0,SEEK_END);
-    long length=lseek(handle,0,SEEK_CUR);
+    long length = lseek(handle,0,SEEK_CUR);
     
     // Map file into address space
-    auto data=static_cast<const char*>(mmap(nullptr,length,PROT_READ,MAP_SHARED,handle,0));
-    auto dataLimit=data+length;
+    auto data = static_cast<const char*>(mmap(nullptr,length,PROT_READ,MAP_SHARED,handle,0));
+    auto dataLimit = data + length;
     
-    // Read file and create our datatypes
-    const char* line=data;
-    int actor_read_nr = 1;
+    /* Read file and create our datatypes
+    We store the actor to movie relation in a CSR and movie to actor in a map
+    */
+    const char* line = data;
+    int actor_index = -1;
     int m1_current = 0;
     int last_actor = 0;
     for (const char* current=data;current!=dataLimit;) {
@@ -140,19 +142,19 @@ int main(int argc, char** argv) {
                     last=current+1;
                     ++column;
             }else if (c=='\n') {
+                // Insert entry into Movie->Actor Map
                 M[movie].push_back(actor);
 
-                // If the actor is different to the last one
-                // Increase actor_read_nr to write into a new index
-                // Add new entry to id_to_index map
+                /* Check if the actor is different to the last one
+                If yes increase actor_index and add entry to actor_keys */
                 if(actor != last_actor){
-                    ++actor_read_nr;
-                    actor_keys[actor] = actor_read_nr;
+                    ++actor_index;
+                    actor_keys[actor] = actor_index;
                 }
 
-                a1[actor_read_nr] = m1_current+1;
+                act2mov_actors[actor_index] = m1_current+1;
                 // Insert movie to list
-                m1[m1_current] = movie;
+                act2mov_movies[m1_current] = movie;
                 // Update index
                 ++m1_current;
 
@@ -170,12 +172,12 @@ int main(int argc, char** argv) {
     cout << "File eingelesen" << endl;
     // return 0;
 
-    // Movie to actor:
+    // Create CSR for movie to actor relation
     int iterator = 0;
     for(size_t movie_id=1; movie_id<=1151758; movie_id++){
         for(size_t actor : M.at(movie_id)){
-            to_actors[iterator] = actor;
-            movie_to[movie_id] = ++iterator;
+            mov2act_actors[iterator] = actor;
+            mov2act_movies[movie_id] = ++iterator;
         }
     }
     cout << "Created Movie to Actor!" << endl;
@@ -187,10 +189,6 @@ int main(int argc, char** argv) {
     vector<size_t> actor1;
     vector<size_t> actor2;
     while((cin >> actorid1) && (cin >> actorid2)) {
-        if(actorid1 == actorid2){
-            cout << 0 << endl;
-            continue;
-        }
         actor1.push_back(actorid1);
         actor2.push_back(actorid2);
     }

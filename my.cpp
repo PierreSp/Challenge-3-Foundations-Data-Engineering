@@ -15,8 +15,6 @@ Max MovieID: 1151758
 
 #include <iostream>
 #include <fstream>
-//#include <unordered_map>
-//#include <unordered_set>
 #include <vector>
 #include <fcntl.h>
 #include <unistd.h>
@@ -36,33 +34,25 @@ int *m1 = new int[17316773-1];
 int *movie_to = new int[1151758];
 int *to_actors = new int[17316773-1]();
 
-//rekursive Funktion Breadth-First-Search
+// Breadth-First Search
 int BFS(
         int *actor_keys,
         int *a1,
         int *m1,
-        // const unordered_map<size_t, unordered_set<size_t>>& A, 
-        // const unordered_map<size_t, unordered_set<size_t>>& M, 
-        // const vector<vector<size_t>>& M, 
         int *movie_to,
         int *to_actors,
         size_t actorid2, 
-        // unordered_set<size_t> current_nodes,
         list<size_t> current_nodes,
         bool *visited
     ) {
-    // If BFS has no starting nodes return -1
+
+    // If BFS is called on an empty list of nodes return -1
     if(current_nodes.empty()) {
         return -1;
     }
-    // If actorid2 is in the current nodes return distance 0
-    // if(current_nodes.count(actorid2)>0) {
-    //     return 0;
-    // }
 
     // Now we want to find all neighbours of each of the current nodes
     list<size_t> neighbours;
-    // bool *neighbours = new bool[1971696];
     
     // For all current actors
     for(size_t i : current_nodes) {
@@ -70,11 +60,11 @@ int BFS(
         for(size_t j = a1[actor_keys[i]-1]; j < a1[actor_keys[i]]; j++) {
             int movie = m1[j];
             // For each movie find all actors
-            // for(size_t k : M.at(movie)) {
             for(size_t k=movie_to[movie-1]; k<movie_to[movie]; k++){
                 size_t new_actor = to_actors[k];
-                // If he has not been inspected yet do so
+                // If he has not been inspected yet add him to neighbors
                 if(!visited[new_actor]) {
+                    // If it is the actor2 we are looking for return 1 as distance
                     if(new_actor==actorid2){
                         return 1;
                     }
@@ -84,11 +74,11 @@ int BFS(
             }
         }
     }
+
     // Now perform BFS on the neighbours we just found
     int count = BFS(
         actor_keys, a1, m1,
         movie_to, to_actors,
-        // M, 
         actorid2, neighbours, visited);
     
     // If BFS returns -1 we pass that forward
@@ -100,7 +90,7 @@ int BFS(
 }
 
 void BFSThread(size_t thread_a1, size_t thread_a2, int *dist_thread, size_t i){
-	 bool *visited = new bool[1971696]();
+    bool *visited = new bool[1971696]();
     // Boolean to save if actor i has been visited or not
     // Nodes are the ones we are visiting right now - We'll want to find their neighbours with each iteration of BFS
     // unordered_set<size_t> current_nodes;
@@ -112,24 +102,14 @@ void BFSThread(size_t thread_a1, size_t thread_a2, int *dist_thread, size_t i){
     dist = BFS(
         actor_keys, a1, m1, 
         movie_to, to_actors,
-        // M,
         thread_a2, current_nodes, visited);
     // Write on global dist variable 
-    //std::lock_guard<std::mutex> block_threads_until_finish_this_job(barrier);
-    cout << "Process: " << i << " Len: " << dist << endl;
-   	dist_thread[i] = dist;
+    // std::lock_guard<std::mutex> block_threads_until_finish_this_job(barrier);
+    cout << "Process: " << i << " Distance: " << dist << endl;
+    dist_thread[i] = dist;
 }
 
 int main(int argc, char** argv) {
-
-    // 1731673-1
-    // a[1] = 2;
-
-    /*
-    I want to look at the movies actor i played in
-    best case: a[i-1] to a[i] gives me the indexes to look them up in m
-    but really: i = actor_keys[i]
-    */
 
     // Movie to actor map
     vector<vector<size_t>> M(1151758+1);
@@ -144,6 +124,7 @@ int main(int argc, char** argv) {
     auto data=static_cast<const char*>(mmap(nullptr,length,PROT_READ,MAP_SHARED,handle,0));
     auto dataLimit=data+length;
     
+    // Read file and create our datatypes
     const char* line=data;
     int actor_read_nr = 1;
     int m1_current = 0;
@@ -159,11 +140,7 @@ int main(int argc, char** argv) {
                     last=current+1;
                     ++column;
             }else if (c=='\n') {
-                // Insert the read actor and movie in both hashmaps
-                // A[actor].insert(movie);
-                // M[movie].insert(actor);
                 M[movie].push_back(actor);
-                // Mq[movie].push_back(actor);
 
                 // If the actor is different to the last one
                 // Increase actor_read_nr to write into a new index
@@ -194,7 +171,6 @@ int main(int argc, char** argv) {
     // return 0;
 
     // Movie to actor:
-
     int iterator = 0;
     for(size_t movie_id=1; movie_id<=1151758; movie_id++){
         for(size_t actor : M.at(movie_id)){
@@ -202,7 +178,6 @@ int main(int argc, char** argv) {
             movie_to[movie_id] = ++iterator;
         }
     }
-
     cout << "Created Movie to Actor!" << endl;
     // return 0;
 
@@ -212,7 +187,6 @@ int main(int argc, char** argv) {
     vector<size_t> actor1;
     vector<size_t> actor2;
     while((cin >> actorid1) && (cin >> actorid2)) {
-        //cout << "Berechne " << actorid1 << " " << actorid2 << endl;
         if(actorid1 == actorid2){
             cout << 0 << endl;
             continue;
@@ -220,21 +194,21 @@ int main(int argc, char** argv) {
         actor1.push_back(actorid1);
         actor2.push_back(actorid2);
     }
+
     size_t inputlen = actor1.size();
     int *distance = new int[inputlen];
-    thread *threadar = new thread[inputlen];
+    thread *thread_arr = new thread[inputlen];
 
     for(size_t i=0; i < inputlen; i++){
-    	threadar[i] = thread(BFSThread, actor1[i], actor2[i], distance, i);
+        thread_arr[i] = thread(BFSThread, actor1[i], actor2[i], distance, i);
     }
     cout << "Threading started" << endl;
     for(size_t i=0; i < inputlen; i++){
-    	threadar[i].join();
+        thread_arr[i].join();
     }
 
     for(size_t j=0; j<inputlen; j++){
-    	cout << distance[j] << endl;
+        cout << distance[j] << endl;
     }
     return 0;
 }
-	

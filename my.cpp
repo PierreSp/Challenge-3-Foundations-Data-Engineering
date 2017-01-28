@@ -1,4 +1,4 @@
-// time echo -e "1 1\n1 2\n2 3\n3 4\n4 5" |./bacon playedin.csv
+// Time echo -e "1 1\n1 2\n2 3\n3 4\n4 5" |./bacon playedin.csv
 // time echo -e "1 1\n1 2" |./bacon playedin.csv
 
 /*
@@ -9,14 +9,18 @@ Max MovieID: 1151758
 */
 
 #include <iostream>
+#include <ios>
 #include <fstream>
 #include <vector>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <list>
+#include <forward_list>
 #include <thread>
 //#include <mutex>
+
+#include <chrono>		// should allow high precision timing
 
 using namespace std;
 
@@ -37,7 +41,7 @@ int BFS(
         int *mov2act_movies,
         int *mov2act_actors,
         size_t actorid2, 
-        list<size_t> current_nodes,
+        forward_list<size_t> current_nodes,
         bool *visited
     ) {
 
@@ -47,7 +51,7 @@ int BFS(
     }
 
     // Now we want to find all neighbours of each of the current nodes
-    list<size_t> neighbours;
+    forward_list<size_t> neighbours;
     
     // For all current actors
     for(size_t i : current_nodes) {
@@ -57,14 +61,14 @@ int BFS(
             // For each movie find all actors
             for(size_t k=mov2act_movies[movie-1]; k<mov2act_movies[movie]; k++){
                 size_t new_actor = mov2act_actors[k];
-                // If he has not been inspected yet add him to neighbors
+                // If he has not been inspected yet add him to neighbours
                 if(!visited[new_actor]) {
                     // If it is the actor2 we are looking for return 1 as distance
                     if(new_actor==actorid2){
                         return 1;
                     }
                     visited[new_actor] = 1;
-                    neighbours.push_back(new_actor);
+                    neighbours.push_front(new_actor);
                 }
             }
         }
@@ -75,7 +79,7 @@ int BFS(
         actor_keys, act2mov_actors, act2mov_movies,
         mov2act_movies, mov2act_actors,
         actorid2, neighbours, visited);
-    
+
     // If BFS returns -1 we pass that forward
     if(count == -1) {
         return -1;
@@ -94,9 +98,9 @@ void BFSThread(size_t thread_a1, size_t thread_a2, int *dist_thread, size_t i){
     // Boolean to save if actor i has been visited or not
     // Nodes are the ones we are visiting right now - We'll want to find their neighbours with each iteration of BFS
     // unordered_set<size_t> current_nodes;
-    list<size_t> current_nodes;
+    forward_list<size_t> current_nodes;
     // We start with only actorid1
-    current_nodes.push_back(thread_a1);
+    current_nodes.push_front(thread_a1);
     int dist;
     // Start Breadth-First-Search
     dist = BFS(
@@ -107,10 +111,16 @@ void BFSThread(size_t thread_a1, size_t thread_a2, int *dist_thread, size_t i){
     // std::lock_guard<std::mutex> block_threads_until_finish_this_job(barrier);
     cout << "Process: " << i << " Distance: " << dist << endl;
     dist_thread[i] = dist;
+
+    // delete unsused variable
+    delete[] visited;
 }
 
 int main(int argc, char** argv) {
 
+  // proper timing of actual code execution
+  auto start_time = chrono::high_resolution_clock::now();
+  
     // Movie to actor map - Will be replaced later
     vector<vector<size_t>> M(1151758+1);
 
@@ -188,14 +198,43 @@ int main(int argc, char** argv) {
     size_t actorid2;
     vector<size_t> actor1;
     vector<size_t> actor2;
-    while((cin >> actorid1) && (cin >> actorid2)) {
-        actor1.push_back(actorid1);
-        actor2.push_back(actorid2);
-    }
 
+    // switch input
+    // if there is a second argument read from this file
+    // if not the use std::cin
+
+    istream * input_stream = &cin;
+    ifstream  f;
+
+    if(argc > 2)
+      {
+	f.open(argv[2]);
+	input_stream = &f;
+	cout << "Read from file: " << argv[2] << endl;
+      }
+
+    while( (*input_stream >> actorid1) && (*input_stream >> actorid2) )
+      {
+	cout << "Input " << actorid1 << " : " <<  actorid2 << endl;
+	actor1.push_back(actorid1);
+	actor2.push_back(actorid2);
+      }
+    
+    // while((cin >> actorid1) && (cin >> actorid2)) {
+    //     actor1.push_front(actorid1);
+    //     actor2.push_front(actorid2);
+    // }
+
+
+    
     size_t inputlen = actor1.size();
     int *distance = new int[inputlen];
     thread *thread_arr = new thread[inputlen];
+    for(int time_counter = 0; time_counter<20; ++time_counter)
+      {
+	//size_t inputlen = actor1.size();
+	//int *distance = new int[inputlen];
+	//thread *thread_arr = new thread[inputlen];
 
     for(size_t i=0; i < inputlen; i++){
         thread_arr[i] = thread(BFSThread, actor1[i], actor2[i], distance, i);
@@ -204,7 +243,16 @@ int main(int argc, char** argv) {
     for(size_t i=0; i < inputlen; i++){
         thread_arr[i].join();
     }
+      }
+    // timing
+    auto end_time = chrono::high_resolution_clock::now();
 
+    auto passed_usecs = chrono::duration_cast<chrono::microseconds>(end_time - start_time);
+    double elapsed_u = (double) passed_usecs.count();
+    double elapsed = elapsed_u / (1000.0 * 1000.0);
+    // cout << "Passed time: " << passed_usecs.count() << " microseconds" << endl << endl;
+    cout << endl << "Passed time: " << elapsed << " seconds" << endl << endl;
+    
     for(size_t j=0; j<inputlen; j++){
         cout << distance[j] << endl;
     }

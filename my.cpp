@@ -60,22 +60,21 @@ int BFS(
         for(int j = act2mov_actors[i-1]; j < act2mov_actors[i]; j++) {
             int movie = act2mov_movies[j];
             // For each movie find all actors
-            if(!movie_visited[movie])
-              {
+            if(!movie_visited[movie]){
                 movie_visited[movie] = 1;
-            for(int k=mov2act_movies[movie-1]; k<mov2act_movies[movie]; k++){
-                int new_actor = mov2act_actors[k];
-                // If he has not been inspected yet add him to neighbours
-                if(!actor_visited[new_actor]) {
-                    // If it is the actor2 we are looking for return 1 as distance
-                    if(new_actor==actorid2){
-                        return 1;
+                for(int k=mov2act_movies[movie-1]; k<mov2act_movies[movie]; k++){
+                    int new_actor = mov2act_actors[k];
+                    // If he has not been inspected yet add him to neighbours
+                    if(!actor_visited[new_actor]) {
+                        // If it is the actor2 we are looking for return 1 as distance
+                        if(new_actor==actorid2){
+                            return 1;
+                        }
+                        actor_visited[new_actor] = 1;
+                        neighbours.push_front(new_actor);
                     }
-                    actor_visited[new_actor] = 1;
-                    neighbours.push_front(new_actor);
                 }
             }
-              }
         }
     }
 
@@ -203,24 +202,6 @@ int main(int argc, char** argv) {
     int actorid2;
     vector<int> actor1;
     vector<int> actor2;
-
-    // // switch input
-    // // if there is a second argument read from this file
-    // // if not the use std::cin
-    // istream * input_stream = &cin;
-    // ifstream  f;
-    // if(argc > 2)
-    //   {
-    // f.open(argv[2]);
-    // input_stream = &f;
-    // cout << "Read from file: " << argv[2] << endl;
-    //   }
-    // while( (*input_stream >> actorid1) && (*input_stream >> actorid2) )
-    //   {
-    // cout << "Input " << actorid1 << " : " <<  actorid2 << endl;
-    // actor1.push_back(actorid1);
-    // actor2.push_back(actorid2);
-    //   }
     
     while((cin >> actorid1) && (cin >> actorid2)) {
         actor1.push_back(actorid1);

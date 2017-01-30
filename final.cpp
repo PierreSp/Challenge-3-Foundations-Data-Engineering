@@ -122,15 +122,22 @@ int main(int argc, char** argv) {
     int actor_index = -1;
     int current_line = 0;
     int last_actor = 0;
-    for (const char* current=data;current!=dataLimit;) {
-        const char* last=line;
+    // Dummy loop to delete first line
+    const char* current;
+    for (current=data;current!=dataLimit;++current) {
+        char c=*current;
+        if (c=='\n') {
+            ++current;
+            break;
+        }
+    }
+    for (;current!=dataLimit;) {
         unsigned column=0;
         int actor=0;
         int movie=0;
         for (;current!=dataLimit;++current) {
             char c=*current;
             if (c==',') {
-                    last=current+1;
                     ++column;
             }else if (c=='\n') {
                 /* Check if the actor is different to the last one

@@ -6,13 +6,10 @@ Max MovieID: 1151758
 */
 
 #include <iostream>
-#include <ios>
-#include <fstream>
 #include <vector>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <list>
 #include <thread>
 
 using namespace std;
@@ -95,7 +92,7 @@ void BFSThread(int thread_a1, int thread_a2, int *dist_thread, int i){
         act2mov_actors, act2mov_movies, 
         mov2act_movies, mov2act_actors,
         actor_keys[thread_a2], current_nodes, actor_visited, movie_visited);
-    cout << "Process: " << i << " Distance: " << dist << endl;
+    // cout << "Process: " << i << " Distance: " << dist << endl;
     dist_thread[i] = dist;
 
     // delete unsused variable
@@ -165,7 +162,7 @@ int main(int argc, char** argv) {
     }
     act2mov_actors[actor_index] = current_line;
 
-    cout << "File eingelesen" << endl;
+    // cout << "File eingelesen" << endl;
 
     // Create CSR for movie to actor relation
     int iterator = 0;
@@ -196,7 +193,7 @@ int main(int argc, char** argv) {
         for(int i=0; i < inputlen; i++){
             thread_arr[i] = thread(BFSThread, actor1[i], actor2[i], distance, i);
         }
-        cout << "Threading started" << endl;
+        // cout << "Threading started" << endl;
         for(int i=0; i < inputlen; i++){
             thread_arr[i].join();
         }
@@ -205,5 +202,6 @@ int main(int argc, char** argv) {
     for(int j=0; j<inputlen; j++){
         cout << distance[j] << endl;
     }
+
     return 0;
 }

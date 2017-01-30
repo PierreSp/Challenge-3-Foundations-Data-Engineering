@@ -58,10 +58,10 @@ int BFS(
     for(size_t i : current_nodes) {
         // Get all movies
 
-      // for better performance eliminate use of actor_keys while accessing the array
-      // better use something like local IDs, i.e. number of occurance in the read list
-      // and translate true ID to this number
-      // this translation is only neede once when query is read
+        // for better performance eliminate use of actor_keys while accessing the array
+        // better use something like local IDs, i.e. number of occurance in the read list
+        // and translate true ID to this number
+        // this translation is only neede once when query is read
         for(size_t j = act2mov_actors[actor_keys[i]-1]; j < act2mov_actors[actor_keys[i]]; j++) {
             int movie = act2mov_movies[j];
             // For each movie find all actors
@@ -69,7 +69,7 @@ int BFS(
                 size_t new_actor = mov2act_actors[k];
                 // If he has not been inspected yet add him to neighbours
 
-		// maybe use a more condensed data structure
+                // maybe use a more condensed data structure
                 if(!visited[new_actor]) {
                     // If it is the actor2 we are looking for return 1 as distance
                     if(new_actor==actorid2){
@@ -188,21 +188,16 @@ int main(int argc, char** argv) {
     }
 
     cout << "File eingelesen" << endl;
-    // return 0;
 
     // Create CSR for movie to actor relation
     int iterator = 0;
     for(size_t movie_id=1; movie_id<=1151758; movie_id++){
         for(size_t actor : M.at(movie_id)){
             mov2act_actors[iterator] = actor;
-            //mov2act_movies[movie_id] = ++iterator;
 	    ++iterator;
         }
-	// don't acces item too often
 	mov2act_movies[movie_id] = iterator;
     }
-    cout << "Created Movie to Actor!" << endl;
-    // return 0;
 
     // While there is an input: read, store, compute
     size_t actorid1;
@@ -210,51 +205,43 @@ int main(int argc, char** argv) {
     vector<size_t> actor1;
     vector<size_t> actor2;
 
-    // switch input
-    // if there is a second argument read from this file
-    // if not the use std::cin
-
-    istream * input_stream = &cin;
-    ifstream  f;
-
-    if(argc > 2)
-      {
-	f.open(argv[2]);
-	input_stream = &f;
-	cout << "Read from file: " << argv[2] << endl;
-      }
-
-    while( (*input_stream >> actorid1) && (*input_stream >> actorid2) )
-      {
-	cout << "Input " << actorid1 << " : " <<  actorid2 << endl;
-	actor1.push_back(actorid1);
-	actor2.push_back(actorid2);
-      }
+    // // switch input
+    // // if there is a second argument read from this file
+    // // if not the use std::cin
+    // istream * input_stream = &cin;
+    // ifstream  f;
+    // if(argc > 2)
+    //   {
+    // f.open(argv[2]);
+    // input_stream = &f;
+    // cout << "Read from file: " << argv[2] << endl;
+    //   }
+    // while( (*input_stream >> actorid1) && (*input_stream >> actorid2) )
+    //   {
+    // cout << "Input " << actorid1 << " : " <<  actorid2 << endl;
+    // actor1.push_back(actorid1);
+    // actor2.push_back(actorid2);
+    //   }
     
-    // while((cin >> actorid1) && (cin >> actorid2)) {
-    //     actor1.push_front(actorid1);
-    //     actor2.push_front(actorid2);
-    // }
-
+    while((cin >> actorid1) && (cin >> actorid2)) {
+        actor1.push_back(actorid1);
+        actor2.push_back(actorid2);
+    }
 
     
     size_t inputlen = actor1.size();
     int *distance = new int[inputlen];
     thread *thread_arr = new thread[inputlen];
-    for(int time_counter = 0; time_counter<1; ++time_counter)
-      {
-	//size_t inputlen = actor1.size();
-	//int *distance = new int[inputlen];
-	//thread *thread_arr = new thread[inputlen];
-
-    for(size_t i=0; i < inputlen; i++){
-        thread_arr[i] = thread(BFSThread, actor1[i], actor2[i], distance, i);
+    for(int time_counter = 0; time_counter<1; ++time_counter){
+        for(size_t i=0; i < inputlen; i++){
+            thread_arr[i] = thread(BFSThread, actor1[i], actor2[i], distance, i);
+        }
+        cout << "Threading started" << endl;
+        for(size_t i=0; i < inputlen; i++){
+            thread_arr[i].join();
+        }
     }
-    cout << "Threading started" << endl;
-    for(size_t i=0; i < inputlen; i++){
-        thread_arr[i].join();
-    }
-      }
+    
     // timing
     auto end_time = chrono::high_resolution_clock::now();
 

@@ -43,7 +43,8 @@ int BFS(
         int *mov2act_actors,
         size_t actorid2, 
         forward_list<size_t> current_nodes,
-        bool *visited
+        bool *actor_visited,
+        bool *movie_visited
     ) {
 
     // If BFS is called on an empty list of nodes return -1
@@ -65,20 +66,22 @@ int BFS(
         for(size_t j = act2mov_actors[actor_keys[i]-1]; j < act2mov_actors[actor_keys[i]]; j++) {
             int movie = act2mov_movies[j];
             // For each movie find all actors
+            if(!movie_visited[movie])
+              {
+                movie_visited[movie] = 1;
             for(size_t k=mov2act_movies[movie-1]; k<mov2act_movies[movie]; k++){
                 size_t new_actor = mov2act_actors[k];
                 // If he has not been inspected yet add him to neighbours
-
-                // maybe use a more condensed data structure
-                if(!visited[new_actor]) {
+                if(!actor_visited[new_actor]) {
                     // If it is the actor2 we are looking for return 1 as distance
                     if(new_actor==actorid2){
                         return 1;
                     }
-                    visited[new_actor] = 1;
+                    actor_visited[new_actor] = 1;
                     neighbours.push_front(new_actor);
                 }
             }
+              }
         }
     }
 
@@ -86,7 +89,7 @@ int BFS(
     int count = BFS(
         actor_keys, act2mov_actors, act2mov_movies,
         mov2act_movies, mov2act_actors,
-        actorid2, neighbours, visited);
+        actorid2, neighbours, actor_visited, movie_visited);
 
     // If BFS returns -1 we pass that forward
     if(count == -1) {
@@ -102,7 +105,8 @@ void BFSThread(size_t thread_a1, size_t thread_a2, int *dist_thread, size_t i){
             return;
     }
 
-    bool *visited = new bool[1971696]();
+    bool *actor_visited = new bool[1971696+1]();
+    bool *movie_visited = new bool[1151758+1]();
     // Boolean to save if actor i has been visited or not
     // Nodes are the ones we are visiting right now - We'll want to find their neighbours with each iteration of BFS
     // unordered_set<size_t> current_nodes;
@@ -114,14 +118,15 @@ void BFSThread(size_t thread_a1, size_t thread_a2, int *dist_thread, size_t i){
     dist = BFS(
         actor_keys, act2mov_actors, act2mov_movies, 
         mov2act_movies, mov2act_actors,
-        thread_a2, current_nodes, visited);
+        thread_a2, current_nodes, actor_visited, movie_visited);
     // Write on global dist variable 
     // std::lock_guard<std::mutex> block_threads_until_finish_this_job(barrier);
     cout << "Process: " << i << " Distance: " << dist << endl;
     dist_thread[i] = dist;
 
     // delete unsused variable
-    delete[] visited;
+    delete[] actor_visited;
+    delete[] movie_visited;
 }
 
 int main(int argc, char** argv) {

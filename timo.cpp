@@ -52,7 +52,7 @@ int BFS(
     // For all current actors
     int depth = 0;
     while(!current_nodes.empty()){
-        depth++
+        depth++;
         for(int i : current_nodes) {
             // Get all movies
             for(int j = act2mov_actors[i-1]; j < act2mov_actors[i]; j++) {
@@ -95,7 +95,7 @@ void BFSThread(int thread_a1, int thread_a2, int *dist_thread, int i){
     // Nodes are the ones we are visiting right now - We'll want to find their neighbours with each iteration of BFS
     vector<int> current_nodes;
     // We start with only actorid1
-    current_nodes.push_front(actor_keys[thread_a1]);
+    current_nodes.push_back(actor_keys[thread_a1]);
     int dist;
     // Start Breadth-First-Search
     dist = BFS(

@@ -36,13 +36,12 @@ int *mov2act_actors = new int[17316773-1]();
 
 // Breadth-First Search
 int BFS(
-        int *actor_keys,
         int *act2mov_actors,
         int *act2mov_movies,
         int *mov2act_movies,
         int *mov2act_actors,
-        size_t actorid2, 
-        forward_list<size_t> current_nodes,
+        int actorid2, 
+        forward_list<int> current_nodes,
         bool *actor_visited,
         bool *movie_visited
     ) {
@@ -53,24 +52,19 @@ int BFS(
     }
 
     // Now we want to find all neighbours of each of the current nodes
-    forward_list<size_t> neighbours;
+    forward_list<int> neighbours;
     
     // For all current actors
-    for(size_t i : current_nodes) {
+    for(int i : current_nodes) {
         // Get all movies
-
-        // for better performance eliminate use of actor_keys while accessing the array
-        // better use something like local IDs, i.e. number of occurance in the read list
-        // and translate true ID to this number
-        // this translation is only neede once when query is read
-        for(size_t j = act2mov_actors[actor_keys[i]-1]; j < act2mov_actors[actor_keys[i]]; j++) {
+        for(int j = act2mov_actors[i-1]; j < act2mov_actors[i]; j++) {
             int movie = act2mov_movies[j];
             // For each movie find all actors
             if(!movie_visited[movie])
               {
                 movie_visited[movie] = 1;
-            for(size_t k=mov2act_movies[movie-1]; k<mov2act_movies[movie]; k++){
-                size_t new_actor = mov2act_actors[k];
+            for(int k=mov2act_movies[movie-1]; k<mov2act_movies[movie]; k++){
+                int new_actor = mov2act_actors[k];
                 // If he has not been inspected yet add him to neighbours
                 if(!actor_visited[new_actor]) {
                     // If it is the actor2 we are looking for return 1 as distance
@@ -87,7 +81,7 @@ int BFS(
 
     // Now perform BFS on the neighbours we just found
     int count = BFS(
-        actor_keys, act2mov_actors, act2mov_movies,
+        act2mov_actors, act2mov_movies,
         mov2act_movies, mov2act_actors,
         actorid2, neighbours, actor_visited, movie_visited);
 
@@ -99,7 +93,7 @@ int BFS(
     return ++count;
 }
 
-void BFSThread(size_t thread_a1, size_t thread_a2, int *dist_thread, size_t i){
+void BFSThread(int thread_a1, int thread_a2, int *dist_thread, int i){
     if(thread_a1 == thread_a2){
             dist_thread[i] = 0;
             return;
@@ -109,16 +103,15 @@ void BFSThread(size_t thread_a1, size_t thread_a2, int *dist_thread, size_t i){
     bool *movie_visited = new bool[1151758+1]();
     // Boolean to save if actor i has been visited or not
     // Nodes are the ones we are visiting right now - We'll want to find their neighbours with each iteration of BFS
-    // unordered_set<size_t> current_nodes;
-    forward_list<size_t> current_nodes;
+    forward_list<int> current_nodes;
     // We start with only actorid1
-    current_nodes.push_front(thread_a1);
+    current_nodes.push_front(actor_keys[thread_a1]);
     int dist;
     // Start Breadth-First-Search
     dist = BFS(
-        actor_keys, act2mov_actors, act2mov_movies, 
+        act2mov_actors, act2mov_movies, 
         mov2act_movies, mov2act_actors,
-        thread_a2, current_nodes, actor_visited, movie_visited);
+        actor_keys[thread_a2], current_nodes, actor_visited, movie_visited);
     // Write on global dist variable 
     // std::lock_guard<std::mutex> block_threads_until_finish_this_job(barrier);
     cout << "Process: " << i << " Distance: " << dist << endl;
@@ -135,7 +128,7 @@ int main(int argc, char** argv) {
   auto start_time = chrono::high_resolution_clock::now();
   
     // Movie to actor map - Will be replaced later
-    vector<vector<size_t>> M(1151758+1);
+    vector<vector<int>> M(1151758+1);
 
     // Open file and figre out length
     int handle = open(argv[1],O_RDONLY);
@@ -157,8 +150,8 @@ int main(int argc, char** argv) {
     for (const char* current=data;current!=dataLimit;) {
         const char* last=line;
         unsigned column=0;
-        size_t actor=0;
-        size_t movie=0;
+        int actor=0;
+        int movie=0;
         for (;current!=dataLimit;++current) {
             char c=*current;
             if (c==',') {
@@ -166,7 +159,7 @@ int main(int argc, char** argv) {
                     ++column;
             }else if (c=='\n') {
                 // Insert entry into Movie->Actor Map
-                M[movie].push_back(actor);
+                // M[movie].push_back(actor);
 
                 /* Check if the actor is different to the last one
                 If yes increase actor_index and add entry to actor_keys */
@@ -174,6 +167,7 @@ int main(int argc, char** argv) {
                     ++actor_index;
                     actor_keys[actor] = actor_index;
                 }
+                M[movie].push_back(actor_index);
 
                 act2mov_actors[actor_index] = m1_current+1;
                 // Insert movie to list
@@ -196,19 +190,19 @@ int main(int argc, char** argv) {
 
     // Create CSR for movie to actor relation
     int iterator = 0;
-    for(size_t movie_id=1; movie_id<=1151758; movie_id++){
-        for(size_t actor : M.at(movie_id)){
+    for(int movie_id=1; movie_id<=1151758; movie_id++){
+        for(int actor : M.at(movie_id)){
             mov2act_actors[iterator] = actor;
-	    ++iterator;
+	       ++iterator;
         }
-	mov2act_movies[movie_id] = iterator;
+        mov2act_movies[movie_id] = iterator;
     }
 
     // While there is an input: read, store, compute
-    size_t actorid1;
-    size_t actorid2;
-    vector<size_t> actor1;
-    vector<size_t> actor2;
+    int actorid1;
+    int actorid2;
+    vector<int> actor1;
+    vector<int> actor2;
 
     // // switch input
     // // if there is a second argument read from this file
@@ -234,15 +228,15 @@ int main(int argc, char** argv) {
     }
 
     
-    size_t inputlen = actor1.size();
+    int inputlen = actor1.size();
     int *distance = new int[inputlen];
     thread *thread_arr = new thread[inputlen];
     for(int time_counter = 0; time_counter<1; ++time_counter){
-        for(size_t i=0; i < inputlen; i++){
+        for(int i=0; i < inputlen; i++){
             thread_arr[i] = thread(BFSThread, actor1[i], actor2[i], distance, i);
         }
         cout << "Threading started" << endl;
-        for(size_t i=0; i < inputlen; i++){
+        for(int i=0; i < inputlen; i++){
             thread_arr[i].join();
         }
     }
@@ -256,7 +250,7 @@ int main(int argc, char** argv) {
     // cout << "Passed time: " << passed_usecs.count() << " microseconds" << endl << endl;
     cout << endl << "Passed time: " << elapsed << " seconds" << endl << endl;
     
-    for(size_t j=0; j<inputlen; j++){
+    for(int j=0; j<inputlen; j++){
         cout << distance[j] << endl;
     }
     return 0;

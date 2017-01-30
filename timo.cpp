@@ -84,6 +84,7 @@ int BFS(
 }
 
 void BFSThread(int thread_a1, int thread_a2, int *dist_thread, int i){
+    
     if(thread_a1 == thread_a2){
             dist_thread[i] = 0;
             return;
